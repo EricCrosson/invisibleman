@@ -112,7 +112,8 @@ sub sleep() {
     if($_[0] eq "help") {
 print<<END;
 Usage: sleep [ms]
-This subroutine sleeps for the desired number of milliseconds.
+This subroutine sleeps for the desired number of microseconds.
+(Actual resolution determined by host computer)
 END
 	return;
     }
