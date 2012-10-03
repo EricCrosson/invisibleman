@@ -11,10 +11,10 @@ use Net::SSH2;
 #
 # This file is the main interface with the user (shell prompt).
 
-# Configuration
+# Configuration - mind full pathnames
 my $username = getpwuid( $< );
-my $path_to_public_key = "~/.ssh/id_rsa.pub";
-my $path_to_private_key = "~/.ssh/id_rsa";
+my $path_to_public_key = "/home/eric/.ssh/id_rsa.pub";
+my $path_to_private_key = "/home/eric/.ssh/id_rsa";
 my $shell_prompt = ">> ";
 
 # Subroutine prototypes
@@ -27,9 +27,10 @@ sub disconnect();
 sub print();
 
 # Constants
+# Most of these are used to store easily-typed information into the help string hash
      use constant command_not_found => "error: unrecognized command\n";
      use constant connect_help => <<END;
-Usage: connect [host] [private_key]
+Usage: connect [host] [alias] [public_key] [private_key]
 This subroutine establishes a ssh connection to [host] using the credentials speciied by [private_key].
 Disconnect from [host] with 'disconnect [host]'.
 END
@@ -95,13 +96,12 @@ my %helptext = (
 );
 
 # Loop to prompt the user for inputmy %helptext = (
-while(1==1) {
-    my $action = &prompt();
-    chomp($action);
+while(1) {
+    chomp(my $action = &prompt());
     my @input = split(/ /, $action);
 
     my $command = shift(@input);
-#    @input = (" ") if (scalar(@input) eq 0);
+    next unless $command;
 
     chomp ($command);
     if (defined $subroutine{$command}) {
@@ -142,20 +142,21 @@ sub do_exit() {
 #TODO-complete this
 sub connect() {
     # Return if no host
-    if (scalar(@_) ne 1) {
+    if (scalar(@_) lt 1) {
 	return;
     }
+    my ($host, $alias, $public_key, $private_key) = @_;
+    $alias = $host unless $alias;
+    $public_key = $path_to_public_key unless $public_key;
+    $private_key = $path_to_private_key unless $private_key;
+    print "This is the data harvested so far\nusername: $username\nalias: $alias\nhost: $host\npub: $public_key\nprivate: $private_key\n";
 
     my $ssh2 = Net::SSH2->new();
-    $ssh2->auth_publickey($username, $path_to_public_key, $path_to_private_key);
-    $ssh2->connect($_[0]) or die "Unable to connect to host $@\n";
+    $ssh2->connect($host) or die "Unable to connect to host $@\n";
+    if ($ssh2->auth_publickey($username, $public_key, $private_key) ) {
+	print "SUCCESS!\n";
+    } else { warn "Auth failed."; }
 #Stopped here- ensure ssh connection
-
-    print "(optional) Enter an alias for this host: ";
-    chomp(my $alias = <>);
-    if (length($alias) <= 0) { # If alias declined
-	$alias = $_[0];
-    }
 
     $clients{$alias} = $ssh2;
 }
@@ -167,9 +168,20 @@ sub direct() {
 	    return;
     }
 
-    my (@command) = @_;
-    my $chan = $clients{$alias}
+# After this block, $command will contain the string to execute
+    my ($command) = '';
+    foreach (@_) {
+	$command .= $_ . ' ';
+    }
+    print $command;
 
+    print "this is" . $command . $alias;
+    print $clients{$alias};
+    my $chan = $clients{$alias}->channel();
+    $chan->blocking(0);  # Allow commands to be passed to the shell
+    $chan->shell();
+    print $chan $command;
+    print "LINE : $_" while <$chan>;
 }
 
 #TODO-make this work
