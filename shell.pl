@@ -1,15 +1,14 @@
 #!/usr/bin/perl
-use strict;
-
-use Time::HiRes qw(usleep nanosleep);
-use Net::SSH2;
-# If the SSH2 package is not installed, install it with this command
-# curl -L http://cpanmin.us | perl - --sudo Net::SSH2 
-
 # Written by Eric Crosson
 # Initial commit 29 September 2012
 #
 # This file is the main interface with the user (shell prompt).
+
+use strict;
+use Net::SSH2;
+use Time::HiRes qw(usleep nanosleep);
+# If the SSH2 package is not installed, install it with this command
+# curl -L http://cpanmin.us | perl - --sudo Net::SSH2 
 
 # Configuration - mind full pathnames
 #my $username = getpwuid( $< );
@@ -112,9 +111,24 @@ while(1) {
 }
 
 # Subroutines
+sub do_exit() { exit @_; }
+
 sub prompt() {
     print $shell_prompt;
     <>;
+}
+
+sub sleep() {
+    usleep($_[0]);
+}
+
+# This subroutine is used only for debugging
+sub search() {
+    if (defined $clients{$_[0]}) {
+	print $clients{$_[0]} . "\n";
+    } else {
+	print "The specified host was not found\n";
+    }
 }
 
 # This subroutine will print a list of commands recognized by the script.
@@ -134,11 +148,6 @@ sub help_message() {
     print help_dialog;
 }
 
-sub do_exit() {
-    print "Exiting...\n";
-    exit 0;
-}
-
 sub connect() {
     # Return if no host
     if (scalar(@_) lt 1) {
@@ -152,7 +161,9 @@ sub connect() {
     my $ssh2 = Net::SSH2->new();
     $ssh2->connect($host) or die "Unable to connect to host $host\n";
     if (!$ssh2->auth_publickey($username, $public_key, $private_key) ) {
-	warn "Authorization failed on host $host.\nHere is what I know:\nuser:$username\nhost:$host\npub_key:$public_key\npriv_key:$private_key";
+	warn "Authorization failed on host $host.\nHere is what I know:\n" . 
+	    "user:$username\nhost:$host\npub_key:$public_key\npriv_key:$private_key";
+	return;
     }
 
     $clients{$alias} = $ssh2;
@@ -171,29 +182,19 @@ sub direct() {
     $command .= "\n"; # Now $command contains the string to execute
 
     die unless defined (my $ssh = $clients{$alias});
+    $ssh->debug(1);
     my $chan = $ssh->channel();
-    $chan->blocking(0);  # Allow commands to be passed to the shell
     $chan->shell();
-    print $chan $command;
+    $chan->blocking(0);  # Allow commands to be passed to the shell
+    #print $chan $command;
+    $chan->exec('ls -lAh /home/eric/\n');
     print "LINE : $_" while <$chan>;
 
     $chan->blocking(1);  # Re-block for storage
+    $chan->close();
 }
 
 #TODO-make this work
 sub disconnect() {
 }
 
-sub sleep() {
-    usleep($_[0]);
-}
-
-# This subroutine is used only for debugging
-sub search() {
-    if (defined $clients{$_[0]}) {
-	print $clients{$_[0]};
-	print "\n";
-    } else {
-	print "The specified host was not found\n";
-    }
-}
