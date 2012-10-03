@@ -11,6 +11,12 @@ use Net::SSH2;
 #
 # This file is the main interface with the user (shell prompt).
 
+# Configuration
+my $username = getpwuid( $< );
+my $path_to_public_key = "~/.ssh/id_rsa.pub";
+my $path_to_private_key = "~/.ssh/id_rsa";
+my $shell_prompt = ">> ";
+
 # Subroutine prototypes
 sub do_exit();
 sub help_message();
@@ -21,7 +27,44 @@ sub disconnect();
 sub print();
 
 # Constants
-use constant command_not_found => "error: unrecognized command\n";
+     use constant command_not_found => "error: unrecognized command\n";
+     use constant connect_help => <<END;
+Usage: connect [host] [private_key]
+This subroutine establishes a ssh connection to [host] using the credentials speciied by [private_key].
+Disconnect from [host] with 'disconnect [host]'.
+END
+    use constant direct_help => <<END;
+Usage: direct [host] [command]
+This subroutine 'directs' the specified host to execute the specified command.
+END
+    use constant print_help => <<END;
+Usage: print [host]
+This prints the session associated with a specified host, or all hosts if invoked generically.
+END
+    use constant sleep_help => <<END;
+Usage: sleep [microseconds]
+This subroutine sleeps the system for the specified amount of microseconds.
+(Actual resolution determined by the host computer.)
+END
+    use constant disconnect_help => <<END;
+Usage: disconnect [host]
+This subroutine frees the specified host from the connection database. 
+END
+    use constant exit_help => <<END;
+This subroutine quits the Automation Scripting Tool.
+END
+    use constant help_dialog => <<END;
+Welcome to the Automation Scripting Tool.
+
+Here is a list of supported commands. Type 'help [command]' to get detailed information about that command. 
+help\t\tshows this help message
+sleep\t\tsleeps for n microseconds
+connect\t\tconnects to a phone through ssh
+disconnect\treleases the ssh session connecting this program and a phone
+direct\t\tinstruct a host to execute a command
+exit|quit\tleave the shell
+END
+
 
 # The hash map
 # Each of the keys (command from the prompt) corresponds to a 
@@ -30,15 +73,28 @@ my %subroutine = (
     'help'       => \&help_message,
     'connect'    => \&connect,
     'disconnect' => \&disconnect,
-    'print'      => \&print,
+    'print'      => \&search,
     'sleep'      => \&sleep,
     'exit'       => \&do_exit,
     'quit'       => \&do_exit,
+    'direct'     => \&direct,
 );
 
+# Each of the connected hosts will be stored in this hash
 my %clients = ();
 
-# Loop to prompt the user for input
+my %helptext = (
+    'help'       => "I am your best friend.\n",
+    'connect'    => connect_help,
+    'disconnect' => disconnect_help,
+    'print'      => print_help,
+    'sleep'      => sleep_help,
+    'exit'       => exit_help,
+    'quit'       => exit_help,
+    'direct'     => direct_help,
+);
+
+# Loop to prompt the user for inputmy %helptext = (
 while(1==1) {
     my $action = &prompt();
     chomp($action);
@@ -57,65 +113,46 @@ while(1==1) {
 
 # Subroutines
 sub prompt() {
-    print ">> ";
+    print $shell_prompt;
     <>;
 }
 
+# This subroutine will print a list of commands recognized by the script.
+# If a specific command is included in the query, the method searches the 
+# helptext hash for a command-specific string to display.
 sub help_message() {
-    if($_[0] eq "help") {
-	print "Not much to say about this command!\n";
-	return;
-    }
-    
-    if(scalar(@_) > 0) {
 # If inquiring about a specific function, pass along the request
-	my ($command) = $_[0];
-	chomp($command);
-	if (defined $subroutine{$command}) {
-	    $subroutine{$command}->("help");
+    if(scalar(@_) > 0) {
+	chomp(my ($command) = $_[0]);
+	if (defined $helptext{$command}) {
+	    print $helptext{$command};
 	} else {
 	    print command_not_found;
 	}
-    } else {
-print<<END;
-Welcome to the Automation Scripting Tool.
-
-Here is a list of supported commands. Type 'help [command]' to get detailed information about that command. 
-help\t\tshows this help message
-sleep\t\tsleeps for n milliseconds
-connect\t\tconnects to a phone through ssh
-disconnect\treleases the ssh session connecting this program and a phone
-exit|quit\tleave the shell
-END
-}
+	return;
+    } # Otherwise, just display the generic dialog
+    print help_dialog;
 }
 
 sub do_exit() {
-    if($_[0] eq "help") {
-	print "This subroutine quits the Automation Scripting Tool.\n";
-	return;
-    }
-
     print "Exiting...\n";
     exit 0;
 }
 
-#TODO-make this work
+#TODO-complete this
 sub connect() {
-    if($_[0] eq "help") {
-print<<END;
-Usage: connect [host] [private_key]
-This subroutine establishes a ssh connection to [host] using the credentials speciied by [private_key].
-Disconnect from [host] with 'disconnect [host]'.
-END
+    # Return if no host
+    if (scalar(@_) ne 1) {
 	return;
     }
+
     my $ssh2 = Net::SSH2->new();
-    $ssh2->connect($_[0]) or print "Unable to connect to $_[0]" && return;
+    $ssh2->auth_publickey($username, $path_to_public_key, $path_to_private_key);
+    $ssh2->connect($_[0]) or die "Unable to connect to host $@\n";
+#Stopped here- ensure ssh connection
 
     print "(optional) Enter an alias for this host: ";
-    my $alias = <>;
-    chomp($alias);
+    chomp(my $alias = <>);
     if (length($alias) <= 0) { # If alias declined
 	$alias = $_[0];
     }
@@ -123,42 +160,32 @@ END
     $clients{$alias} = $ssh2;
 }
 
+sub direct() {
+    my ($alias) = shift;
+    if (!defined $clients{$alias}) { #If the host isn't found, can't do anything.
+	print "Specified host not found! Have you connected him yet?\n";
+	    return;
+    }
+
+    my (@command) = @_;
+    my $chan = $clients{$alias}
+
+}
+
 #TODO-make this work
 sub disconnect() {
-    if($_[0] eq "help") {
-print<<END;
-Usage: disconnect [host].
-This subroutine disconnects from [host], provided a connection has already been established.
-END
-	return;
-    }
 }
 
 sub sleep() {
-    if($_[0] eq "help") {
-print<<END;
-Usage: sleep [ms]
-This subroutine sleeps for the desired number of microseconds.
-(Actual resolution determined by host computer)
-END
-	return;
-    }
     usleep($_[0]);
 }
 
 # This subroutine is used only for debugging
-sub print() {
-    if($_[0] eq "help") {
-print<<END;
-Usage: print [host]
-This prints the session associated with a specified host, or all hosts if invoked generically.
-END
-	return;
-    }
+sub search() {
     if (defined $clients{$_[0]}) {
 	print $clients{$_[0]};
 	print "\n";
     } else {
-	print "The specified host was not found";
+	print "The specified host was not found\n";
     }
 }
