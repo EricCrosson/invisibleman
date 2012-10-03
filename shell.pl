@@ -12,7 +12,7 @@ use Net::SSH2;
 # This file is the main interface with the user (shell prompt).
 
 # Configuration - mind full pathnames
-my $username = getpwuid( $< );
+#my $username = getpwuid( $< );
 my $path_to_public_key = "/home/eric/.ssh/id_rsa.pub";
 my $path_to_private_key = "/home/eric/.ssh/id_rsa";
 my $shell_prompt = ">> ";
@@ -30,7 +30,7 @@ sub print();
 # Most of these are used to store easily-typed information into the help string hash
      use constant command_not_found => "error: unrecognized command\n";
      use constant connect_help => <<END;
-Usage: connect [host] [alias] [public_key] [private_key]
+Usage: connect [user] [host] [alias] [public_key] [private_key]
 This subroutine establishes a ssh connection to [host] using the credentials speciied by [private_key].
 Disconnect from [host] with 'disconnect [host]'.
 END
@@ -139,28 +139,26 @@ sub do_exit() {
     exit 0;
 }
 
-#TODO-complete this
 sub connect() {
     # Return if no host
     if (scalar(@_) lt 1) {
 	return;
     }
-    my ($host, $alias, $public_key, $private_key) = @_;
+    my ($username, $host, $alias, $public_key, $private_key) = @_;
     $alias = $host unless $alias;
     $public_key = $path_to_public_key unless $public_key;
     $private_key = $path_to_private_key unless $private_key;
-    print "This is the data harvested so far\nusername: $username\nalias: $alias\nhost: $host\npub: $public_key\nprivate: $private_key\n";
 
     my $ssh2 = Net::SSH2->new();
-    $ssh2->connect($host) or die "Unable to connect to host $@\n";
-    if ($ssh2->auth_publickey($username, $public_key, $private_key) ) {
-	print "SUCCESS!\n";
-    } else { warn "Auth failed."; }
-#Stopped here- ensure ssh connection
+    $ssh2->connect($host) or die "Unable to connect to host $host\n";
+    if (!$ssh2->auth_publickey($username, $public_key, $private_key) ) {
+	warn "Authorization failed on host $host.\nHere is what I know:\nuser:$username\nhost:$host\npub_key:$public_key\npriv_key:$private_key";
+    }
 
     $clients{$alias} = $ssh2;
 }
 
+#TODO-make this work
 sub direct() {
     my ($alias) = shift;
     if (!defined $clients{$alias}) { #If the host isn't found, can't do anything.
@@ -168,20 +166,18 @@ sub direct() {
 	    return;
     }
 
-# After this block, $command will contain the string to execute
     my ($command) = '';
-    foreach (@_) {
-	$command .= $_ . ' ';
-    }
-    print $command;
+    foreach (@_) { $command .= $_ . ' '; } #TODO append in perl? then init to \n
+    $command .= "\n"; # Now $command contains the string to execute
 
-    print "this is" . $command . $alias;
-    print $clients{$alias};
-    my $chan = $clients{$alias}->channel();
+    die unless defined (my $ssh = $clients{$alias});
+    my $chan = $ssh->channel();
     $chan->blocking(0);  # Allow commands to be passed to the shell
     $chan->shell();
     print $chan $command;
     print "LINE : $_" while <$chan>;
+
+    $chan->blocking(1);  # Re-block for storage
 }
 
 #TODO-make this work
