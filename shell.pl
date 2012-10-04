@@ -12,15 +12,19 @@ use Time::HiRes qw(usleep nanosleep);
 
 # Configuration - mind full pathnames
 #my $username = getpwuid( $< );
-my $path_to_public_key = "/home/eric/.ssh/id_rsa.pub";
-my $path_to_private_key = "/home/eric/.ssh/id_rsa";
 my $shell_prompt = ">> ";
+my %ssh = (
+    'username' => getpwuid( $< ),
+    'pub'      => "/home/eric/.ssh/id_rsa.pub",
+    'priv'     => "/home/eric/.ssh/id_rsa",
+);
 
 # Subroutine prototypes
 sub do_exit();
 sub help_message();
 sub prompt();
 sub sleep();
+sub config();
 sub connect();
 sub disconnect();
 sub print();
@@ -64,6 +68,10 @@ disconnect\treleases the ssh session connecting this program and a phone
 direct\t\tinstruct a host to execute a command
 exit|quit\tleave the shell
 END
+    use constant config_help => <<END;
+Usage: config [username] [public key] [private key]
+This subroutine allows for changing of ssh options during runtime.
+END
 
 
 # The hash map
@@ -78,6 +86,7 @@ my %subroutine = (
     'exit'       => \&do_exit,
     'quit'       => \&do_exit,
     'direct'     => \&direct,
+    'config'     => \&config,
 );
 
 # Each of the connected hosts will be stored in this hash
@@ -92,6 +101,7 @@ my %helptext = (
     'exit'       => exit_help,
     'quit'       => exit_help,
     'direct'     => direct_help,
+    'config'     => config_help,
 );
 
 # Loop to prompt the user for inputmy %helptext = (
@@ -131,6 +141,14 @@ sub search() {
     }
 }
 
+# This subroutine allows for changing of ssh options during runtime
+sub config() {
+    my ($user, $pubK, $privK) = @_;
+    $ssh{'username'} = $user if defined $user;
+    $ssh{'pub'} = $pubK if defined $pubK;
+    $ssh{'priv'} = $privK if defined $privK;
+}
+
 # This subroutine will print a list of commands recognized by the script.
 # If a specific command is included in the query, the method searches the 
 # helptext hash for a command-specific string to display.
@@ -148,28 +166,27 @@ sub help_message() {
     print help_dialog;
 }
 
+# This subroutine will establish a connection to the specified host, storing
+# the resulting object in a hash. In this way, we can name our connections
+# in a human-readable manner, and send them commands and gather output with ease.
 sub connect() {
     # Return if no host
     if (scalar(@_) lt 1) {
 	return;
     }
-    my ($username, $host, $alias, $public_key, $private_key) = @_;
+    my ($host, $alias) = @_;
     $alias = $host unless $alias;
-    $public_key = $path_to_public_key unless $public_key;
-    $private_key = $path_to_private_key unless $private_key;
 
     my $ssh2 = Net::SSH2->new();
     $ssh2->connect($host) or die "Unable to connect to host $host\n";
-    if (!$ssh2->auth_publickey($username, $public_key, $private_key) ) {
-	warn "Authorization failed on host $host.\nHere is what I know:\n" . 
-	    "user:$username\nhost:$host\npub_key:$public_key\npriv_key:$private_key";
+    if (!$ssh2->auth_publickey($ssh{'username'}, $ssh{'pub'}, $ssh{'priv'})) {
+	warn "Authorization failed on host $host.";
 	return;
     }
-
+ 
     $clients{$alias} = $ssh2;
 }
 
-#TODO-make this work
 sub direct() {
     my ($alias) = shift;
     if (!defined $clients{$alias}) { #If the host isn't found, can't do anything.
@@ -182,16 +199,12 @@ sub direct() {
     $command .= "\n"; # Now $command contains the string to execute
 
     die unless defined (my $ssh = $clients{$alias});
-    $ssh->debug(1);
     my $chan = $ssh->channel();
     $chan->shell();
     $chan->blocking(0);  # Allow commands to be passed to the shell
-    #print $chan $command;
-    $chan->exec('ls -lAh /home/eric/\n');
-    print "LINE : $_" while <$chan>;
-
+    print $chan $command;
+    print $_ while <$chan>;
     $chan->blocking(1);  # Re-block for storage
-    $chan->close();
 }
 
 #TODO-make this work
