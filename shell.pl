@@ -142,6 +142,13 @@ sub prompt() {
 
 # This subroutine is used only for debugging
 sub search() {
+    if (scalar (@_) eq 0) {
+	while (my ($alias, $instance) = each(%clients)) {
+	    print "$alias: $instance\n";
+	}
+	return;
+    }
+
     if (defined $clients{$_[0]}) {
 	print $clients{$_[0]} . "\n";
     } else {
@@ -182,7 +189,7 @@ sub connect() {
     if (scalar(@_) lt 1) {
 	return;
     }
-    my ($host, $alias) = @_;
+    chomp(my ($host, $alias) = @_);
     $alias = $host unless $alias;
 
     my $ssh2 = Net::SSH2->new();
@@ -223,7 +230,7 @@ sub disconnect() {
     $clients{$_} = undef;
 }
 
-#TODO-make this work
+# This subroutine interprets an input file
 sub parsefile() {
     my $file = shift;
     open my $info, $file or die "Could not open $file: $!";
