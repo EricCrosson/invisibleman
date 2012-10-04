@@ -28,6 +28,8 @@ sub config();
 sub connect();
 sub disconnect();
 sub print();
+sub parsefile();
+sub processCommand();
 
 # Constants
 # Most of these are used to store easily-typed information into the help string hash
@@ -87,6 +89,7 @@ my %subroutine = (
     'quit'       => \&do_exit,
     'direct'     => \&direct,
     'config'     => \&config,
+    'run'        => \&parsefile,
 );
 
 # Each of the connected hosts will be stored in this hash
@@ -105,31 +108,36 @@ my %helptext = (
 );
 
 # Loop to prompt the user for inputmy %helptext = (
+#TODO-consice!
 while(1) {
     chomp(my $action = &prompt());
-    my @input = split(/ /, $action);
+    (my $command = $action) =~ /^(.*?)\s/; # first word
+    next unless $command; # prevents error on blank return
+    &processCommand($action);
+}
 
-    my $command = shift(@input);
-    next unless $command;
+sub processCommand() {
+    my @input = split(/ /, $_[0]);
+    chomp(my $command = shift(@input));
 
-    chomp ($command);
     if (defined $subroutine{$command}) {
 	$subroutine{$command}->(@input);
+    } elsif (-e $command) {
+	&parsefile($command);
     } else {
 	print command_not_found;
     }
+
 }
 
 # Subroutines
 sub do_exit() { exit @_; }
 
+sub sleep() { usleep($_[0]); }
+
 sub prompt() {
     print $shell_prompt;
     <>;
-}
-
-sub sleep() {
-    usleep($_[0]);
 }
 
 # This subroutine is used only for debugging
@@ -190,7 +198,7 @@ sub connect() {
 # This subroutine forwards a string of instructions to the specified host.
 sub direct() {
     my ($alias) = shift;
-    if (!defined $clients{$alias}) { #If the host isn't found, can't do anything.
+        if (!defined $clients{$alias}) { #If the host isn't found, can't do anything.
 	print "Specified host not found! Have you connected him yet?\n";
 	    return;
     }
@@ -208,7 +216,18 @@ sub direct() {
     $chan->blocking(1);  # Re-block for storage
 }
 
-#TODO-make this work
+# This subroutine disconnects from a specified host and frees associated memory
 sub disconnect() {
+    return unless defined $clients{$_};
+    $clients{$_}->disconnect();
+    $clients{$_} = undef;
 }
 
+#TODO-make this work
+sub parsefile() {
+    my $file = shift;
+    open my $info, $file or die "Could not open $file: $!";
+
+    &processCommand($_) while(<$info>);
+    close $info;
+}
