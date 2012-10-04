@@ -11,7 +11,6 @@ use Time::HiRes qw(usleep nanosleep);
 # curl -L http://cpanmin.us | perl - --sudo Net::SSH2 
 
 # Configuration - mind full pathnames
-#my $username = getpwuid( $< );
 my $shell_prompt = ">> ";
 my %ssh = (
     'username' => getpwuid( $< ),
@@ -31,8 +30,7 @@ sub print();
 sub parsefile();
 sub processCommand();
 
-# Constants
-# Most of these are used to store easily-typed information into the help string hash
+# Help messages, defined outside of program for readability
      use constant command_not_found => "error: unrecognized command\n";
      use constant connect_help => <<END;
 Usage: connect [user] [host] [alias] [public_key] [private_key]
@@ -107,8 +105,7 @@ my %helptext = (
     'config'     => config_help,
 );
 
-# Loop to prompt the user for inputmy %helptext = (
-#TODO-consice!
+# Loop to prompt the user for input
 while(1) {
     chomp(my $action = &prompt());
     (my $command = $action) =~ /^(.*?)\s/; # first word
@@ -127,7 +124,6 @@ sub processCommand() {
     } else {
 	print command_not_found;
     }
-
 }
 
 # Subroutines
@@ -158,10 +154,12 @@ sub search() {
 
 # This subroutine allows for changing of ssh options during runtime
 sub config() {
-    my ($user, $pubK, $privK) = @_;
+    chomp(my ($user, $pubK, $privK) = @_);
     $ssh{'username'} = $user if defined $user;
     $ssh{'pub'} = $pubK if defined $pubK;
     $ssh{'priv'} = $privK if defined $privK;
+    print "Current configuration:\nusername:$ssh{'username'}\n" .
+	"pub:$ssh{'pub'}\npriv:$ssh{'priv'}\n";
 }
 
 # This subroutine will print a list of commands recognized by the script.
@@ -193,28 +191,28 @@ sub connect() {
     $alias = $host unless $alias;
 
     my $ssh2 = Net::SSH2->new();
-    $ssh2->connect($host) or die "Unable to connect to host $host\n";
+    $ssh2->connect($host) or warn "Unable to connect to host $host\n";
     if (!$ssh2->auth_publickey($ssh{'username'}, $ssh{'pub'}, $ssh{'priv'})) {
 	warn "Authorization failed on host $host.";
 	return;
     }
- 
+
     $clients{$alias} = $ssh2;
 }
 
 # This subroutine forwards a string of instructions to the specified host.
 sub direct() {
     my ($alias) = shift;
-        if (!defined $clients{$alias}) { #If the host isn't found, can't do anything.
+    if (!defined $clients{$alias}) { #If the host isn't found, can't do anything.
 	print "Specified host not found! Have you connected him yet?\n";
 	    return;
     }
 
     my ($command) = '';
-    foreach (@_) { $command .= $_ . ' '; } #TODO append in perl? then init to \n
+    foreach (@_) { $command .= $_ . ' '; }
     $command .= "\n"; # Now $command contains the string to execute
 
-    die unless defined (my $ssh = $clients{$alias});
+    my $ssh = $clients{$alias};
     my $chan = $ssh->channel();
     $chan->shell();
     $chan->blocking(0);  # Allow commands to be passed to the shell
@@ -233,8 +231,10 @@ sub disconnect() {
 # This subroutine interprets an input file
 sub parsefile() {
     my $file = shift;
-    open my $info, $file or die "Could not open $file: $!";
+    open my $info, $file or warn "Could not open $file: $!";
 
-    &processCommand($_) while(<$info>);
+    while(<$info>) {
+	&processCommand($_);
+    }
     close $info;
 }
