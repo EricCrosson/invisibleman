@@ -187,6 +187,7 @@ sub connect() {
     $clients{$alias} = $ssh2;
 }
 
+# This subroutine forwards a string of instructions to the specified host.
 sub direct() {
     my ($alias) = shift;
     if (!defined $clients{$alias}) { #If the host isn't found, can't do anything.
