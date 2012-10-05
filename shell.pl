@@ -44,7 +44,7 @@ Usage: direct [host] [command]
 This subroutine 'directs' the specified host to execute the specified command.
 END
     use constant print_help => <<END;
-Usage: print [host]
+Usage: print [list of hosts]
 This prints the session associated with a specified host, or all hosts if invoked generically.
 END
     use constant sleep_help => <<END;
@@ -53,7 +53,7 @@ This subroutine sleeps the system for the specified amount of microseconds.
 (Actual resolution determined by the host computer.)
 END
     use constant disconnect_help => <<END;
-Usage: disconnect [host]
+Usage: disconnect [list of hosts]
 This subroutine frees the specified host from the connection database. 
 END
     use constant exit_help => <<END;
@@ -83,16 +83,13 @@ my %subroutine = (
     'connect'    => \&connect,
     'disconnect' => \&disconnect,
     'print'      => \&search,
-    'sleep'      => \&sleep,
+    'sleep'      => \&usleep,
     'exit'       => \&do_exit,
     'quit'       => \&do_exit,
     'direct'     => \&direct,
     'config'     => \&config,
     'run'        => \&parsefile,
 );
-
-# Each of the connected hosts will be stored in this hash
-my %clients = ();
 
 my %helptext = (
     'help'       => "I am your best friend.\n",
@@ -106,15 +103,18 @@ my %helptext = (
     'config'     => config_help,
 );
 
+my %clients = ();
 my @file;
 
-# Loop to prompt the user for input
+# Main loop to prompt the user for input.
 while(1) {
     chomp(my $action = &prompt());
     (my $command = $action) =~ /^(.*?)\s/; # first word
     &processCommand($action);
 }
 
+# This subroutine directs input to where it needs to go. Files are parsed,
+# methods are invoked, or an error is thrown. 
 sub processCommand() {
     my @input = split(/ /, $_[0]);
     chomp(my $command = shift(@input));
@@ -130,10 +130,10 @@ sub processCommand() {
 }
 
 # Subroutines
+# Wrapper for the exit function. This allows for error codes
 sub do_exit() { exit @_; }
 
-sub sleep() { usleep($_[0]); }
-
+# This subroutine prints the configured string to ask for input and returns a command
 sub prompt() {
     print $shell_prompt;
     <>;
