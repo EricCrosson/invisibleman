@@ -4,16 +4,19 @@
 #
 # This file is the main interface with the user (shell prompt).
 
+# If the utilized packages aren't installed, install them with
+# curl -L http://cpanmin.us | perl - --sudo Net::SSH2 
+# curl -L http://cpanmin.us | perl - --sudo Iterator::File::Line 
 use strict;
 use Net::SSH2;
+use Tie::File;
+use Fcntl 'O_RDONLY';
 use Time::HiRes qw(usleep nanosleep);
-# If the SSH2 package is not installed, install it with this command
-# curl -L http://cpanmin.us | perl - --sudo Net::SSH2 
 
 # Configuration - mind full pathnames
 my $shell_prompt = ">> ";
 my %ssh = (
-    'username' => getpwuid( $< ),
+    'username' => getpwuid( $< ), #admin
     'pub'      => "/home/eric/.ssh/id_rsa.pub",
     'priv'     => "/home/eric/.ssh/id_rsa",
 );
@@ -31,7 +34,7 @@ sub parsefile();
 sub processCommand();
 
 # Help messages, defined outside of program for readability
-     use constant command_not_found => "error: unrecognized command\n";
+     use constant command_not_found => "error: unrecognized command";
      use constant connect_help => <<END;
 Usage: connect [user] [host] [alias] [public_key] [private_key]
 This subroutine establishes a ssh connection to [host] using the credentials speciied by [private_key].
@@ -105,6 +108,8 @@ my %helptext = (
     'config'     => config_help,
 );
 
+my @file;
+
 # Loop to prompt the user for input
 while(1) {
     chomp(my $action = &prompt());
@@ -116,13 +121,14 @@ while(1) {
 sub processCommand() {
     my @input = split(/ /, $_[0]);
     chomp(my $command = shift(@input));
+    return unless $command;
 
     if (defined $subroutine{$command}) {
 	$subroutine{$command}->(@input);
     } elsif (-e $command) {
 	&parsefile($command);
     } else {
-	print command_not_found;
+	print command_not_found . " $command\n";
     }
 }
 
@@ -228,13 +234,42 @@ sub disconnect() {
     $clients{$_} = undef;
 }
 
-# This subroutine interprets an input file
+# This subroutine begins the recursive parsing of the supplied file
 sub parsefile() {
-    my $file = shift;
-    open my $info, $file or warn "Could not open $file: $!";
+    chomp(my ($file) = @_);
+    tie @file, 'Tie::File', "$file", mode => O_RDONLY, memory => 35_000_000;
+    &run_block(1, 0); # Run the main code block, once.
+}
 
-    while(<$info>) {
-	&processCommand($_);
+# This is a recursive subroutine! Each loop will call another layer of recursion.
+# Args: [times to repeat] [line to start parsing]
+sub run_block() {
+    local $_;
+    my ($rep, $line) = @_;
+
+    my $i = 1;
+    my $initial = $line;
+    my $final;
+    for($i; $i <= $rep; $i++) {
+
+	while ($line < scalar(@file)) {
+
+	    if ($file[$line] =~ m/{/) { #If a loop is starting
+		(my $inner_rep = $file[$line]) =~ s/\D//g;
+		$line = &run_block($inner_rep, $line+1);
+	    }
+	    
+	    elsif ($file[$line] =~ m/}/) { #If a loop is ending
+		$final = $line unless $final;
+		$line = $initial;
+		last;
+	    }
+	    
+	    else { # Just run a command
+		&processCommand($file[$line]);
+	    }
+	    $line++;
+	}
     }
-    close $info;
+    return $final;
 }
