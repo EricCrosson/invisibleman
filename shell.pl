@@ -6,12 +6,11 @@
 
 # If the utilized packages aren't installed, install them with
 # curl -L http://cpanmin.us | perl - --sudo Net::SSH2 
-# curl -L http://cpanmin.us | perl - --sudo Iterator::File::Line 
 use strict;
 use Net::SSH2;
 use Tie::File;
-use Fcntl 'O_RDONLY';
-use Time::HiRes qw(usleep nanosleep);
+use Fcntl "O_RDONLY";
+use Time::HiRes "usleep";
 
 # Configuration - mind full pathnames
 my $shell_prompt = ">> ";
@@ -77,7 +76,6 @@ This subroutine allows for changing of ssh options during runtime.
 END
 
 
-# The hash map
 # Each of the keys (command from the prompt) corresponds to a 
 # subroutine containing the code to run.
 my %subroutine = (    
@@ -114,14 +112,13 @@ my @file;
 while(1) {
     chomp(my $action = &prompt());
     (my $command = $action) =~ /^(.*?)\s/; # first word
-    next unless $command; # prevents error on blank return
     &processCommand($action);
 }
 
 sub processCommand() {
     my @input = split(/ /, $_[0]);
     chomp(my $command = shift(@input));
-    return unless $command;
+    return unless $command; # prevents error on blank commands
 
     if (defined $subroutine{$command}) {
 	$subroutine{$command}->(@input);
@@ -142,7 +139,9 @@ sub prompt() {
     <>;
 }
 
-# This subroutine is used only for debugging
+# This subroutine is used only for debugging. If an alias is specified,
+# print information about that alias. Else, list the entire directory.
+# Args: [list of names]
 sub search() {
     if (scalar (@_) eq 0) {
 	while (my ($alias, $instance) = each(%clients)) {
@@ -150,15 +149,18 @@ sub search() {
 	}
 	return;
     }
-
-    if (defined $clients{$_[0]}) {
-	print $clients{$_[0]} . "\n";
-    } else {
-	print "The specified host was not found\n";
+    foreach (@_) {
+	if (defined $clients{$_}) {
+	    print "$_ = $clients{$_}\n";
+	} else {
+	    print "$_ was not found\n";
+	}
     }
 }
 
-# This subroutine allows for changing of ssh options during runtime
+# This subroutine allows for changing of ssh options during runtime.
+# The ssh connection will use these settings for authentication. 
+# Args: [username] [path to public key] [path to private key]
 sub config() {
     chomp(my ($user, $pubK, $privK) = @_);
     $ssh{'username'} = $user if defined $user;
@@ -171,6 +173,7 @@ sub config() {
 # This subroutine will print a list of commands recognized by the script.
 # If a specific command is included in the query, the method searches the 
 # helptext hash for a command-specific string to display.
+# Args: [command]
 sub help_message() {
 # If inquiring about a specific function, pass along the request
     if(scalar(@_) > 0) {
@@ -188,11 +191,10 @@ sub help_message() {
 # This subroutine will establish a connection to the specified host, storing
 # the resulting object in a hash. In this way, we can name our connections
 # in a human-readable manner, and send them commands and gather output with ease.
+# Args: [host] [alias]
 sub connect() {
-    # Return if no host
-    if (scalar(@_) lt 1) {
-	return;
-    }
+    return if (scalar(@_) lt 1);
+
     chomp(my ($host, $alias) = @_);
     $alias = $host unless $alias;
 
@@ -206,7 +208,8 @@ sub connect() {
     $clients{$alias} = $ssh2;
 }
 
-# This subroutine forwards a string of instructions to the specified host.
+# This subroutine forwards a directive to the specified host as a string.
+# Args: [alias] [command]
 sub direct() {
     my ($alias) = shift;
     if (!defined $clients{$alias}) { #If the host isn't found, can't do anything.
@@ -214,62 +217,63 @@ sub direct() {
 	    return;
     }
 
-    my ($command) = '';
+    my ($command) = ''; # let $command contains the string to execute
     foreach (@_) { $command .= $_ . ' '; }
-    $command .= "\n"; # Now $command contains the string to execute
 
     my $ssh = $clients{$alias};
     my $chan = $ssh->channel();
     $chan->shell();
     $chan->blocking(0);  # Allow commands to be passed to the shell
-    print $chan $command;
+    print $chan $command . "\n";
     print $_ while <$chan>;
     $chan->blocking(1);  # Re-block for storage
 }
 
-# This subroutine disconnects from a specified host and frees associated memory
+# This subroutine disconnects from a specified host and frees associated memory.
+# Args: [list of aliases to disconnect]
 sub disconnect() {
-    return unless defined $clients{$_};
-    $clients{$_}->disconnect();
-    $clients{$_} = undef;
+    foreach (@_) {
+	next unless defined $clients{$_};
+	$clients{$_}->disconnect();
+	delete $clients{$_};
+    }
 }
 
-# This subroutine begins the recursive parsing of the supplied file
+# This subroutine begins the recursive parsing of the supplied file.
+# Args: [file to parse]
 sub parsefile() {
     chomp(my ($file) = @_);
     tie @file, 'Tie::File', "$file", mode => O_RDONLY, memory => 35_000_000;
-    &run_block(1, 0); # Run the main code block, once.
+    &run_block(1, 0); # Run the main code block, once
 }
 
-# This is a recursive subroutine! Each loop will call another layer of recursion.
+# This is a recursive subroutine.
+# This subroutine will read each line in a block of code (each loop is one block)
+# and execute the desired instructions. Each nested loop recurses once. 
 # Args: [times to repeat] [line to start parsing]
 sub run_block() {
-    local $_;
     my ($rep, $line) = @_;
-
-    my $i = 1;
-    my $initial = $line;
-    my $final;
+    my $i = 1, my $initial = $line, my $final;
     for($i; $i <= $rep; $i++) {
-
 	while ($line < scalar(@file)) {
 
-	    if ($file[$line] =~ m/{/) { #If a loop is starting
+# If a loop is starting, parse the number of times to repeat
+# and jump in.
+	    if ($file[$line] =~ m/{/) { 
 		(my $inner_rep = $file[$line]) =~ s/\D//g;
 		$line = &run_block($inner_rep, $line+1);
 	    }
-	    
-	    elsif ($file[$line] =~ m/}/) { #If a loop is ending
+# If we have reached a closing brace, a loop is ending. Reset the 
+# program counter and repeat from the beginning.
+	    elsif ($file[$line] =~ m/}/) { 
 		$final = $line unless $final;
 		$line = $initial;
 		last;
 	    }
-	    
-	    else { # Just run a command
-		&processCommand($file[$line]);
-	    }
+# If not a control statment, this must be a command. Run as such.
+	    else { &processCommand($file[$line]); }
 	    $line++;
 	}
     }
-    return $final;
+    return $final; # Return where inner loop ends for the encompassing loop
 }
