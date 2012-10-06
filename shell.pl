@@ -36,7 +36,8 @@ sub processCommand();
      use constant command_not_found => "error: unrecognized command";
      use constant connect_help => <<END;
 Usage: connect [user] [host] [alias] [public_key] [private_key]
-This subroutine establishes a ssh connection to [host] using the credentials speciied by [private_key].
+This subroutine establishes a ssh connection to [host] using
+the credentials speciied by [private_key].
 Disconnect from [host] with 'disconnect [host]'.
 END
     use constant direct_help => <<END;
@@ -45,7 +46,8 @@ This subroutine 'directs' the specified host to execute the specified command.
 END
     use constant print_help => <<END;
 Usage: print [list of hosts]
-This prints the session associated with a specified host, or all hosts if invoked generically.
+This prints the session associated with a specified host,
+or all hosts if invoked generically.
 END
     use constant sleep_help => <<END;
 Usage: sleep [microseconds]
@@ -62,7 +64,8 @@ END
     use constant help_dialog => <<END;
 Welcome to the Automation Scripting Tool.
 
-Here is a list of supported commands. Type 'help [command]' to get detailed information about that command. 
+Here is a list of supported commands.
+Type 'help [command]' to get detailed information about that command. 
 help\t\tshows this help message
 sleep\t\tsleeps for n microseconds
 connect\t\tconnects to a phone through ssh
@@ -209,7 +212,10 @@ sub connect() {
 }
 
 # This subroutine forwards a directive to the specified host as a string.
-# Args: [alias] [command]
+# If one wishes to send more than just one string, specify a file with 
+# a list of commands (minus the 'direct [alias]'. This file will be parsed
+# and each line will be sent to the target computer. 
+# Args: [alias] [command|file]
 sub direct() {
     my ($alias) = shift;
     if (!defined $clients{$alias}) { #If the host isn't found, can't do anything.
@@ -217,7 +223,17 @@ sub direct() {
 	    return;
     }
 
-    my ($command) = ''; # let $command contains the string to execute
+# We have a file on our hands. Parse it, prepending each line 
+# (save control structures) with the phrase 'direct [alias]'.
+    if (-e $_[0]) {
+	my $sub_name = (caller(0))[3];
+	$sub_name =~ s/main:://;
+	&parsefile($_[0], "$sub_name $alias" );
+	return;
+    }
+
+# Otherwise, we need our array of strings mashed into one
+    my $command = '';
     foreach (@_) { $command .= $_ . ' '; }
 
     my $ssh = $clients{$alias};
@@ -240,38 +256,47 @@ sub disconnect() {
 }
 
 # This subroutine begins the recursive parsing of the supplied file.
-# Args: [file to parse]
+# If it was invoked by direct (instead of run), the $address will 
+# be attached in order to send each command to the right host.
+# Args: [file to parse] [direct (alias)]
 sub parsefile() {
-    chomp(my ($file) = @_);
+    chomp(my ($file, $address) = @_);
     tie @file, 'Tie::File', "$file", mode => O_RDONLY, memory => 35_000_000;
-    &run_block(1, 0); # Run the main code block, once
+    &run_block(1, 0, $address); # Run the main code block, once
 }
 
 # This is a recursive subroutine.
 # This subroutine will read each line in a block of code (each loop is one block)
 # and execute the desired instructions. Each nested loop recurses once. 
-# Args: [times to repeat] [line to start parsing]
+#
+# Should this be a file 'directed' to a host, the address must be supplied. 
+# See 'direct' and 'parsefile'. This will look like "direct $alias"
+#
+# Args: [times to repeat] [line to start parsing] [direct (alias)]
 sub run_block() {
-    my ($rep, $line) = @_;
+    my ($rep, $line, $address) = @_;
     my $i = 1, my $initial = $line, my $final;
     for($i; $i <= $rep; $i++) {
 	while ($line < scalar(@file)) {
 
-# If a loop is starting, parse the number of times to repeat
-# and jump in.
+# If a loop is starting, parse the number of times to repeat and jump in.
 	    if ($file[$line] =~ m/{/) { 
 		(my $inner_rep = $file[$line]) =~ s/\D//g;
-		$line = &run_block($inner_rep, $line+1);
+		$line = &run_block($inner_rep, $line+1, $address);
 	    }
 # If we have reached a closing brace, a loop is ending. Reset the 
-# program counter and repeat from the beginning.
+# program counter and repeat from the beginning, or drop out and go up a level.
 	    elsif ($file[$line] =~ m/}/) { 
 		$final = $line unless $final;
 		$line = $initial;
 		last;
 	    }
 # If not a control statment, this must be a command. Run as such.
-	    else { &processCommand($file[$line]); }
+	    else { 
+		my $command = $file[$line];
+		$command = $address . " " . $command unless $command =~ m/sleep/;
+		&processCommand($command);
+	    }
 	    $line++;
 	}
     }
