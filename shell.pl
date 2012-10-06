@@ -15,9 +15,9 @@ use Time::HiRes "usleep";
 # Configuration - mind full pathnames
 my $shell_prompt = ">> ";
 my %ssh = (
-    'username' => getpwuid( $< ), #admin
-    'pub'      => "/home/eric/.ssh/id_rsa.pub",
-    'priv'     => "/home/eric/.ssh/id_rsa",
+    username => getpwuid( $< ), #admin
+    pub      => "/home/eric/.ssh/id_rsa.pub",
+    priv     => "/home/eric/.ssh/id_rsa",
 );
 
 # Help messages, defined outside of program for readability
@@ -154,11 +154,11 @@ sub search() {
 # Args: [username] [path to public key] [path to private key]
 sub config() {
     chomp(my ($user, $pubK, $privK) = @_);
-    $ssh{'username'} = $user if defined $user;
-    $ssh{'pub'} = $pubK if defined $pubK;
-    $ssh{'priv'} = $privK if defined $privK;
-    print "Current configuration:\nusername:$ssh{'username'}\n" .
-	"pub:$ssh{'pub'}\npriv:$ssh{'priv'}\n";
+    $ssh{username} = $user if defined $user;
+    $ssh{pub} = $pubK if defined $pubK;
+    $ssh{priv} = $privK if defined $privK;
+    print "Current configuration:\nusername:$ssh{username}\n" .
+	"pub:$ssh{pub}\npriv:$ssh{priv}\n";
 }
 
 # This subroutine will print a list of commands recognized by the script.
@@ -191,7 +191,7 @@ sub connect() {
 
     my $ssh2 = Net::SSH2->new();
     $ssh2->connect($host) or warn "Unable to connect to host $host\n";
-    if (!$ssh2->auth_publickey($ssh{'username'}, $ssh{'pub'}, $ssh{'priv'})) {
+    if (!$ssh2->auth_publickey($ssh{username}, $ssh{pub}, $ssh{priv})) {
 	warn "Authorization failed on host $host.";
 	return;
     }
@@ -246,12 +246,12 @@ sub disconnect() {
 # This subroutine begins the recursive parsing of the supplied file.
 # If it was invoked by direct (instead of run), the $address will 
 # be attached in order to send each command to the right host.
-# Args: [file to parse] [direct (alias)]
+# Args: [file to parse] [direct (alias)] [address] 
 sub parsefile() {
     chomp(my ($file, $address) = @_);
     tie @file, 'Tie::File', "$file", mode => O_RDONLY;
     my %blacklist = ( sleep => 1 );
-    &run_block(1, 0, $address, %blacklist); # Run the main code block, once
+    &run_block(1, 0, $address, %blacklist); # Run the main code block, once, from line 0
 }
 
 # This is a recursive subroutine.
@@ -261,7 +261,7 @@ sub parsefile() {
 # Should this be a file 'directed' to a host, the address must be supplied. 
 # See 'direct' and 'parsefile'. This will look like "direct $alias"
 #
-# Args: [times to repeat] [line to start parsing] [direct (alias)]
+# Args: [times to repeat] [line to start parsing] [address] [blacklist]
 sub run_block() {
     my ($rep, $line, $address, %run_local) = @_;
     my $i = 1, my $initial = $line, my $final;
