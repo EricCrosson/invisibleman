@@ -119,7 +119,7 @@ while(1) {
 # This subroutine directs input to where it needs to go. Files are parsed,
 # methods are invoked, or an error is thrown. 
 sub processCommand() {
-    my @input = split(/ /, $_[0]);
+    chomp(my @input = split(/ /, $_[0]));
     chomp(my $command = shift(@input));
     return unless $command; # prevents error on blank commands
 
@@ -218,12 +218,12 @@ sub connect() {
 # Args: [alias] [command|file]
 sub direct() {
     my ($alias) = shift;
-    if (!defined $clients{$alias}) { #If the host isn't found, can't do anything.
+    if (!defined $clients{$alias}) { 
 	print "Specified host not found! Have you connected him yet?\n";
 	    return;
     }
 
-# We have a file on our hands. Parse it, prepending each line 
+# If we have a file on our hands: parse it, prepending each line 
 # (save control structures) with the phrase 'direct [alias]'.
     if (-e $_[0]) {
 	my $sub_name = (caller(0))[3];
@@ -261,8 +261,9 @@ sub disconnect() {
 # Args: [file to parse] [direct (alias)]
 sub parsefile() {
     chomp(my ($file, $address) = @_);
-    tie @file, 'Tie::File', "$file", mode => O_RDONLY, memory => 35_000_000;
-    &run_block(1, 0, $address); # Run the main code block, once
+    tie @file, 'Tie::File', "$file", mode => O_RDONLY;
+    my %blacklist = ( sleep => 1 );
+    &run_block(1, 0, $address, %blacklist); # Run the main code block, once
 }
 
 # This is a recursive subroutine.
@@ -274,7 +275,7 @@ sub parsefile() {
 #
 # Args: [times to repeat] [line to start parsing] [direct (alias)]
 sub run_block() {
-    my ($rep, $line, $address) = @_;
+    my ($rep, $line, $address, %run_local) = @_;
     my $i = 1, my $initial = $line, my $final;
     for($i; $i <= $rep; $i++) {
 	while ($line < scalar(@file)) {
@@ -282,7 +283,7 @@ sub run_block() {
 # If a loop is starting, parse the number of times to repeat and jump in.
 	    if ($file[$line] =~ m/{/) { 
 		(my $inner_rep = $file[$line]) =~ s/\D//g;
-		$line = &run_block($inner_rep, $line+1, $address);
+		$line = &run_block($inner_rep, $line+1, $address, %run_local);
 	    }
 # If we have reached a closing brace, a loop is ending. Reset the 
 # program counter and repeat from the beginning, or drop out and go up a level.
@@ -294,8 +295,8 @@ sub run_block() {
 # If not a control statment, this must be a command. Run as such.
 	    else { 
 		my $command = $file[$line];
-		$command = $address . " " . $command unless $command =~ m/sleep/;
-		&processCommand($command);
+		$command = $address . ' ' . $command unless defined $run_local{$command =~ s/[\s\d]+//r};
+		&processCommand($command =~ s/^\s+//r); # chomp the beginning
 	    }
 	    $line++;
 	}
