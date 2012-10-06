@@ -20,18 +20,6 @@ my %ssh = (
     'priv'     => "/home/eric/.ssh/id_rsa",
 );
 
-# Subroutine prototypes
-sub do_exit();
-sub help_message();
-sub prompt();
-sub sleep();
-sub config();
-sub connect();
-sub disconnect();
-sub print();
-sub parsefile();
-sub processCommand();
-
 # Help messages, defined outside of program for readability
      use constant command_not_found => "error: unrecognized command";
      use constant connect_help => <<END;
