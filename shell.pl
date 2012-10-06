@@ -93,9 +93,7 @@ my %helptext = (
     'direct'     => direct_help,
     'config'     => config_help,
 );
-
 my %clients = ();
-my @file;
 
 # Main loop to prompt the user for input.
 while(1) {
@@ -118,6 +116,7 @@ sub processCommand() {
     } else {
 	print command_not_found . " $command\n";
     }
+    usleep 100;
 }
 
 # Subroutines
@@ -184,9 +183,8 @@ sub help_message() {
 # in a human-readable manner, and send them commands and gather output with ease.
 # Args: [host] [alias]
 sub connect() {
-    return if (scalar(@_) lt 1);
-
     chomp(my ($host, $alias) = @_);
+    return if (scalar(@_) lt 1 || defined $clients{$alias});
     $alias = $host unless $alias;
 
     my $ssh2 = Net::SSH2->new();
@@ -249,9 +247,13 @@ sub disconnect() {
 # Args: [file to parse] [direct (alias)] [address] 
 sub parsefile() {
     chomp(my ($file, $address) = @_);
-    tie @file, 'Tie::File', "$file", mode => O_RDONLY;
-    my %blacklist = ( sleep => 1 );
-    &run_block(1, 0, $address, %blacklist); # Run the main code block, once, from line 0
+    unless (-e $file) { 
+        print "error: file $file not found.\n";
+        return;
+    }
+    tie my @file, 'Tie::File', "$file", mode => O_RDONLY;
+    my %small_blacklist = ( sleep => 1 );
+    &run_block(1, 0, $address, @file, %small_blacklist); # Run the main code block
 }
 
 # This is a recursive subroutine.
@@ -263,31 +265,36 @@ sub parsefile() {
 #
 # Args: [times to repeat] [line to start parsing] [address] [blacklist]
 sub run_block() {
-    my ($rep, $line, $address, %run_local) = @_;
-    my $i = 1, my $initial = $line, my $final;
+    my $rep = shift;
+    my $line = shift;
+    my $address = shift;
+    my (@file, %run_local) = @_;
+    my $i = 1, my $initial = $line, my $final = undef;
     for($i; $i <= $rep; $i++) {
-	while ($line < scalar(@file)) {
+	while ($line < $#file-1) {
 
 # If a loop is starting, parse the number of times to repeat and jump in.
 	    if ($file[$line] =~ m/{/) { 
-		(my $inner_rep = $file[$line]) =~ s/\D//g;
-		$line = &run_block($inner_rep, $line+1, $address, %run_local);
+		(my $inner_rep = $file[$line]) =~ s/\D//gr;
+		my %blacklist = ( sleep => 1, direct => 1 );
+		$line = &run_block($inner_rep, $line+1, $address, @file, %blacklist);
 	    }
 # If we have reached a closing brace, a loop is ending. Reset the 
 # program counter and repeat from the beginning, or drop out and go up a level.
 	    elsif ($file[$line] =~ m/}/) { 
 		$final = $line unless $final;
-		$line = $initial;
+		$line = $initial; 
 		last;
 	    }
 # If not a control statment, this must be a command. Run as such.
 	    else { 
 		my $command = $file[$line];
-		$command = $address . ' ' . $command unless defined $run_local{$command =~ s/[\s\d]+//r};
+		$command = $address.' '.$command unless defined $run_local{$command =~ s/[\s]+.*$//r};
+		$command =~ s/^*;*$//r; # Handle the comments
 		&processCommand($command =~ s/^\s+//r); # chomp the beginning
 	    }
 	    $line++;
 	}
     }
-    return $final; # Return where inner loop ends for the encompassing loop
+    return $final || ($line + 1); # Return where inner block ends for the encompassing block
 }
