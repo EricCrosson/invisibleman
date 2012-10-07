@@ -1,0 +1,57 @@
+Writing modules for the Automation Scripting Tool
+
+This tool is designed to be flexible. It doesn't currently support callbacks, but that's one jewel I'd love to incorporate. if enough people are familiar with perl I will certainly proceed. Besides callbacks, it can handle just about anything. When using the 'direct' command to forward instructions to connected hosts, it may be useful to have a good toolbox on the phone side, as well as the control side. The 'direct' command will invoke a function (most likely from the cli) on the phone, and return when the function returns. Output is forwareded immediately to the scripting tool. An example script might look as follows:
+
+; Any line with a semicolon is a comment
+config admin /home/ddrell/.ssh/hq_rsa.pub /home/ddrell/ssh/hq_rsa
+connect 10.162.2.137 marta
+connect 10.162.2.108 recipient # say his ext. is 555
+direct marta push 35 # number 5
+direct marta push 35
+direct marta push 35
+direct marta push 17660 # dial
+direct recipient answer_incoming
+
+
+where 'push' is defined as my forgeDTMF function, x is the keycode:
+forgeDTMF x 1
+forgeDTMF x 0
+
+and 'answer_incoming' is a cli command that waits until recognizing an imcoming call, answers it, (perhaps delaying a small amount for audio cutthrough and rtp establishment,) and returns.
+
+
+When the above snippet completes, the two phones will be engaged in a call. 
+
+
+
+
+Alternatively, without using C-x r t, one can save many key strokes by writing a subroutine. In a separate file, write a block of code you would like to direct to one host. Let's call this file dial555.auto, and make it behave identically to the above script:
+
+push 35 # number 5
+push 35
+push 35
+push 17660 # dial
+
+
+
+Now our main code has been shortened to:
+
+config admin /home/ddrell/.ssh/hq_rsa.pub /home/ddrell/ssh/hq_rsa
+connect 10.162.2.137 marta
+connect 10.162.2.108 recipient # say his ext. is 555
+direct marta dial555.auto
+direct recipient answer_incoming
+
+
+
+
+
+
+Loops can also be created in this language. They take a single argument, the number of times to repeat the loop. If one wanted to repeat a loop n times, the syntax is:
+
+n {
+// commands
+// more commands
+}
+
+taking care to place the bounds of the loop on lines by themselves. Nested loops are supported, as well as loops from subroutines.
