@@ -57,11 +57,11 @@ direct recipient answer_incoming
 
 
 
-Finally, no language would be useful without loops. Loops in this language take one argument, the number of times to repeat the loop. If one wanted to repeat a loop n times, the syntax is:
+Finally, no language would be useful without loops. Loops in this language take one argument: the number of times to repeat the loop. For one wanting to repeat a loop n times, the syntax is:
 
 n {
 ; commands
 ; more commands
 }
 
-taking care to place the bounds of the loop on lines by themselves. Nested loops are supported, as well as loops within subroutines.
+taking care to place the bounds of the loop on lines by themselves. Nested loops are supported, as well as loops within subroutines. There is no error handling for 'hidden' brackets [eg: "direct localhost final command } ; Done with everything!" will cause ridiculous parsing behavior].
