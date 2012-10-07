@@ -1,0 +1,7 @@
+echo "Cow tipping"
+2 {
+hostname
+number123 ; when calling a subroutine rom a asubroutine, be sure to omit 'run '
+utimer -c 1ms
+}
+cal
