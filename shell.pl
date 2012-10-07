@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 # Written by Eric Crosson
 # Initial commit 29 September 2012
 #
@@ -7,6 +7,7 @@
 # If the utilized packages aren't installed, install them with
 # curl -L http://cpanmin.us | perl - --sudo Net::SSH2 
 use strict;
+no warnings 'uninitialized';
 use Net::SSH2;
 use Tie::File;
 use Fcntl "O_RDONLY";
@@ -107,6 +108,7 @@ while(1) {
 sub processCommand() {
     chomp(my @input = split(/ /, $_[0]));
     chomp(my $command = shift(@input));
+    $command =~ s/;.*$//;   # Comment handler
     return unless $command; # prevents error on blank commands
 
     if (defined $subroutine{$command}) {
@@ -116,7 +118,6 @@ sub processCommand() {
     } else {
 	print command_not_found . " $command\n";
     }
-    usleep 100;
 }
 
 # Subroutines
@@ -244,7 +245,7 @@ sub disconnect() {
 # This subroutine begins the recursive parsing of the supplied file.
 # If it was invoked by direct (instead of run), the $address will 
 # be attached in order to send each command to the right host.
-# Args: [file to parse] [direct (alias)] [address] 
+# Args: [file to parse] [address] 
 sub parsefile() {
     chomp(my ($file, $address) = @_);
     unless (-e $file) { 
@@ -263,19 +264,19 @@ sub parsefile() {
 # Should this be a file 'directed' to a host, the address must be supplied. 
 # See 'direct' and 'parsefile'. This will look like "direct $alias"
 #
-# Args: [times to repeat] [line to start parsing] [address] [blacklist]
+# Args: [times to repeat] [line to start parsing] [address] [file to parse] [blacklist]
 sub run_block() {
     my $rep = shift;
     my $line = shift;
     my $address = shift;
     my (@file, %run_local) = @_;
-    my $i = 1, my $initial = $line, my $final = undef;
-    for($i; $i <= $rep; $i++) {
+    my $initial = $line, my $final = undef;
+    for(my $i = 1; $i <= $rep; $i++) {
 	while ($line < $#file-1) {
 
 # If a loop is starting, parse the number of times to repeat and jump in.
 	    if ($file[$line] =~ m/{/) { 
-		(my $inner_rep = $file[$line]) =~ s/\D//gr;
+		(my $inner_rep = $file[$line]) =~ s/\D//g;
 		my %blacklist = ( sleep => 1, direct => 1 );
 		$line = &run_block($inner_rep, $line+1, $address, @file, %blacklist);
 	    }
@@ -290,7 +291,6 @@ sub run_block() {
 	    else { 
 		my $command = $file[$line];
 		$command = $address.' '.$command unless defined $run_local{$command =~ s/[\s]+.*$//r};
-		$command =~ s/^*;*$//r; # Handle the comments
 		&processCommand($command =~ s/^\s+//r); # chomp the beginning
 	    }
 	    $line++;
