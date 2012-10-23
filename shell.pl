@@ -16,9 +16,9 @@ use Time::HiRes "usleep";
 # Configuration - mind full pathnames
 my $shell_prompt = ">> ";
 my %ssh = (
-    username => getpwuid( $< ), #admin
-    pub      => "/home/eric/.ssh/id_rsa.pub",
-    priv     => "/home/eric/.ssh/id_rsa",
+    username => "admin",
+    pub      => "/home/eric/tmp/shor_keys/hq_rsa.pub",
+    priv     => "/home/eric/tmp/shor_keys/hq_rsa",
 );
 
 # Help messages, defined outside of program for readability
