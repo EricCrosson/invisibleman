@@ -13,4 +13,6 @@ sample files to feed into the invisible man.
 
 ## Getting started
 
-Open up the file `shell.pl` to begin your journey.
+Open up the file `shell.pl` to begin your journey browsing code. Once
+you're ready to give it a shot, look at the documentation and
+examples for the end users, located in `modules_help.txt`.
