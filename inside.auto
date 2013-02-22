@@ -1,7 +1,8 @@
 echo "Cow tipping"
 2 {
 hostname
-number123 ; when calling a subroutine rom a asubroutine, be sure to omit 'run '
+number123.auto ; when calling a subroutine from a asubroutine,
+	       ; be sure to omit 'run '
 utimer -c 1ms
 }
 cal

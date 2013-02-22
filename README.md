@@ -27,7 +27,7 @@ familiar programming environment. In order to connect to a host, you
 have to set a few configuration options. These can be hard coded into
 the script (see the %ssh hash) or chosen dynamically at runtime.
 
-## The Problem this program solves
+## 'The Problem' This Program Solves
 
 This program allows for a very concise and flexible way to control and
 monitor an arbitrary number of remote hosts simultaneously. In
