@@ -50,15 +50,16 @@ curl -L http://cpanmin.us | perl - --sudo Net::SSH2
 ## Connecting to Remote Hosts
 In order to connect as admin with a known set of keys, Henry would write
 
-```bash
+```lisp
 config admin /home/henry/.ssh/hq_rsa.pub /home/henry/ssh/hq_rsa
 ```
 
 When logging in to a host, the `connect` command is used.
 
-```bash
-connect 10.162.2.101 connect 10.162.2.108 henry connect 10.162.2.137
-recipient
+```lisp
+connect 10.162.2.101
+connect 10.162.2.108 henry
+connect 10.162.2.137 recipient
 ```
 
 For convenience, a host can be referenced by its alias. As of now, an
