@@ -228,3 +228,13 @@ run_block()
 > See 'direct' and 'parsefile'. This will look like "direct $alias"
 >
 > Args: [times to repeat] [line to start parsing] [address] [file to parse] [blacklist]
+
+## Syntax Highlighting
+
+Though modest, there is currently a minor mode to help edit automation
+scripts. Evaluating the following line in Emacs will enable
+highlighting in all files ending in `.auto`
+
+```lisp
+(load-library "invisible-mode")
+```
