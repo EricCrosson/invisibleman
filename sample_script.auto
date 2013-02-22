@@ -1,6 +1,7 @@
-connect localhost eric
+connect localhost myself
 
-config ecrosson
+; put your utexas login here!
+config ecrosson /home/eric/.ssh/id_rsa.pub /home/eric/.ssh/id_rsa
 connect peach.ece.utexas.edu peach
 connect luigi.ece.utexas.edu luigi
 
@@ -12,9 +13,8 @@ direct peach date && hostname
 sleep 200
 
 3 {
-sleep 1000
-direct eric inside.auto
-direct eric echo "Done with inner loop"
+direct myself inside.auto
+direct myself echo "Done with inner loop"
 }
 
-direct eric echo "That's a wrap"
+direct myself echo "That's a wrap"
