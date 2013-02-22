@@ -1,3 +1,3 @@
 # TODO
 
-- Include a minor mode with `generic-x`
+- Beef up the minor mode with `generic-x`
