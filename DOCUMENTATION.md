@@ -55,11 +55,12 @@ phone, and return when the function returns. Output is forwareded
 immediately to the scripting tool. An example script might look as
 follows:
 
-```bash
-; Any line with a semicolon is a comment.  And according to my
-; directory, henry's extension is 555. The keycode for 5 is 35 direct
-; marta push 35 # number 5 direct marta push 35 direct marta push 35
-; direct marta push 17660 # dial direct recipient answer_incoming
+```lisp
+Any line with a semicolon is a comment.  And according to my
+directory, henry's extension is 555. The keycode for 5 is 35
+direct marta push 35 # number 5
+direct marta push 35 direct marta push 35
+direct marta push 17660 # dial direct recipient answer_incoming
 ```
 
 where `push` is an imaginary command in the cli that tells the phone
