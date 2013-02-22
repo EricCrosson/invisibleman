@@ -7,7 +7,7 @@ framework is intended to be transparent to the hosts, acting as an
 
 ## Documentation
 
-Extensive documentatin is included inside the source files, which I
+Extensive documentation is included inside the source files, which I
 may one day transfer here should I find the time. Also included are
 sample files to feed into the invisible man.
 
@@ -48,7 +48,7 @@ curl -L http://cpanmin.us | perl - --sudo Net::SSH2
 ```
 
 ## Connecting to Remote Hosts
-In order to connect as admin with a known set of keys, henry would write
+In order to connect as admin with a known set of keys, Henry would write
 
 ```bash
 config admin /home/henry/.ssh/hq_rsa.pub /home/henry/ssh/hq_rsa
@@ -70,16 +70,17 @@ Now that we are connected to some hosts, we can issuing commands. The
 `direct` command is used to forward instructions to connected
 hosts. It may be useful to have a good toolbox of useful commands
 prepared on the phone (host) side, as well as the control side. Some
-short modules could easily be included in the cli, allowing for a wide
+short modules could easily be included in the CLI, allowing for a wide
 range of functions. The `direct` command will invoke a function on the
 phone, and return when the function returns. Output is forwareded
 immediately to the scripting tool. An example script might look as
 follows:
 
 ```lisp
-; Any line with a semicolon is a comment.  And according to my
-; directory, henry's extension is 555.
+; Any line with a semicolon is a comment.
+; And according to my directory, Henry's extension is 555.
 ; The keycode for 5 is 35
+
 direct marta push 35 ; number 5
 direct marta push 35
 direct marta push 35
@@ -89,11 +90,13 @@ direct recipient answer_incoming
 
 where `push` is an imaginary command in the cli that tells the phone
 buttons have been pushed. Buttons are referred to by their keycodes
-(x) through the forgeDTMF command: forgeDTMF x 1 forgeDTMF x 0
+`x` through the `forgeDTMF` command:
+`forgeDTMF x 1`
+`forgeDTMF x 0`
 
-and `answer_incoming` is a cli command that waits until recognizing an
-imcoming call, answers it, (perhaps delaying a small amount for audio
-cutthrough and rtp establishment,) and returns.
+and `answer_incoming` is a CLI command that waits until recognizing an
+incoming call, answers it, (perhaps delaying a small amount for audio
+cut-through and RTP establishment,) and returns.
 
 
 When the above snippet completes, the two phones will be engaged in a
@@ -102,11 +105,11 @@ call.
 
 ## I Remember Something About Conciseness
 
-This syntax is rather bulky, and it's nice to save keystrokes. Instead
-of utilizing `C-x r t` cleverly, one can write a block of code as a
-subroutine. In a separate file, write a block of code you would like
-to direct to a host. Let's call this file `dial555.auto`, and make it
-behave identically to the above script:
+This syntax is rather bulky, and it's nice to save keystrokes and
+time. Instead of utilizing `C-x r t` cleverly, one can write a block
+of code as a subroutine. In a separate file, write a block of code you
+would like to direct to a host. Let's call this file `dial555.auto`,
+and make it behave identically to the above script:
 
 ```lisp
 push 35 ; number 5
@@ -128,10 +131,13 @@ direct recipient answer_incoming
 
 ## Approaching a Programming Language
 
-We have seen how to implement local variables (aliased instances of
-remote hosts), control hosts with directives, and group directives
-into meaningul chunks. We have introduced a documentation system. I
-hope I'm not the only one starting to notice the resemblance.
+We have seen how to implement
+- local variables (aliased instances of remote hosts),
+- control hosts with directives, and
+- group directives into meaningful chunks.
+
+We have introduced a documentation system. I hope I'm not the only one
+starting to notice the resemblance.
 
 Finally, no language would be useful without loops. Loops in this
 language take one argument: the number of times to repeat the
