@@ -87,14 +87,17 @@ subroutine. In a separate file, write a block of code you would like
 to direct to a host. Let's call this file `dial555.auto`, and make it
 behave identically to the above script:
 
-```bash
-push 35 # number 5 push 35 push 35 push 17660 # dial
+```lisp
+push 35 ; number 5
+push 35
+push 35
+push 17660 ; dial
 ```
 
 
 Now our main code has been shortened to:
 
-```bash
+```lisp
 config admin /home/henry/.ssh/hq_rsa.pub /home/henry/ssh/hq_rsa
 connect 10.162.2.137 marta
 connect 10.162.2.108 recipient ; say his ext. is 555
@@ -113,7 +116,7 @@ Finally, no language would be useful without loops. Loops in this
 language take one argument: the number of times to repeat the
 loop. For one wanting to repeat a loop n times, the syntax is:
 
-```bash
+```lisp
 n {
 ; commands
 ; more commands
