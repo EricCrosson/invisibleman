@@ -5,7 +5,7 @@
 # This file is the main interface with the user (shell prompt).
 
 # If the utilized packages aren't installed, install them with
-# curl -L http://cpanmin.us | perl - --sudo Net::SSH2 
+# curl -L http://cpanmin.us | perl - --sudo Net::SSH2
 use strict;
 no warnings 'uninitialized';
 use Net::SSH2;
@@ -45,7 +45,7 @@ This subroutine sleeps the system for the specified amount of microseconds.
 END
     use constant disconnect_help => <<END;
 Usage: disconnect [list of hosts]
-This subroutine frees the specified host from the connection database. 
+This subroutine frees the specified host from the connection database.
 END
     use constant exit_help => <<END;
 This subroutine quits the Automation Scripting Tool.
@@ -54,7 +54,7 @@ END
 Welcome to the Automation Scripting Tool.
 
 Here is a list of supported commands.
-Type 'help [command]' to get detailed information about that command. 
+Type 'help [command]' to get detailed information about that command.
 help\t\tshows this help message
 sleep\t\tsleeps for n microseconds
 connect\t\tconnects to a phone through ssh
@@ -66,33 +66,37 @@ END
 Usage: config [username] [public key] [private key]
 This subroutine allows for changing of ssh options during runtime.
 END
+    use constant help_string => <<END;
+I am your best friend.
+END
 
 
-# Each of the keys (command from the prompt) corresponds to a 
+# Each of the keys (command from the prompt) corresponds to a
 # subroutine containing the code to run.
-my %subroutine = (    
-    'help'       => \&help_message,
-    'connect'    => \&connect,
-    'disconnect' => \&disconnect,
-    'print'      => \&search,
-    'sleep'      => \&usleep,
-    'exit'       => \&do_exit,
-    'quit'       => \&do_exit,
-    'direct'     => \&direct,
-    'config'     => \&config,
-    'run'        => \&parsefile,
-);
+# Aliases are on the right column.
+my %subroutine	 =  (
+    'help'       => \&help_message, 'h' => \&help_message,
+    'connect'    => \&connect,	    'c' => \&connect,
+    'print'      => \&search,	    'p' => \&search,
+    'sleep'      => \&usleep,	    's' => \&usleep,
+    'exit'       => \&do_exit,	    'e' => \&do_exit,
+    'quit'       => \&do_exit,	    'q' => \&do_exit,
+    'direct'     => \&direct,	    'd' => \&direct,
+    'config'     => \&config,	    'c' => \&config,
+    'run'        => \&parsefile,    'r' => \&parsefile,
+    'disconnect' => \&disconnect
+    );
 
 my %helptext = (
-    'help'       => "I am your best friend.\n",
-    'connect'    => connect_help,
-    'disconnect' => disconnect_help,
-    'print'      => print_help,
-    'sleep'      => sleep_help,
-    'exit'       => exit_help,
-    'quit'       => exit_help,
-    'direct'     => direct_help,
-    'config'     => config_help,
+    'help'       => help_string,     'h' => help_string,
+    'connect'    => connect_help,    'c' => connect_help,
+    'disconnect' => disconnect_help, 'd' => disconnect_help,
+    'print'      => print_help,	     'p' => print_help,
+    'sleep'      => sleep_help,	     's' => sleep_help,
+    'exit'       => exit_help,	     'e' => exit_help,
+    'quit'       => exit_help,	     'q' => exit_help,
+    'direct'     => direct_help,     'd' => direct_help,
+    'config'     => config_help,     'c' => config_help,
 );
 my %clients = ();
 
@@ -104,7 +108,7 @@ while(1) {
 }
 
 # This subroutine directs input to where it needs to go. Files are parsed,
-# methods are invoked, or an error is thrown. 
+# methods are invoked, or an error is thrown.
 sub processCommand() {
     chomp(my @input = split(/ /, $_[0]));
     chomp(my $command = shift(@input));
@@ -150,7 +154,7 @@ sub search() {
 }
 
 # This subroutine allows for changing of ssh options during runtime.
-# The ssh connection will use these settings for authentication. 
+# The ssh connection will use these settings for authentication.
 # Args: [username] [path to public key] [path to private key]
 sub config() {
     chomp(my ($user, $pubK, $privK) = @_);
@@ -162,7 +166,7 @@ sub config() {
 }
 
 # This subroutine will print a list of commands recognized by the script.
-# If a specific command is included in the query, the method searches the 
+# If a specific command is included in the query, the method searches the
 # helptext hash for a command-specific string to display.
 # Args: [command]
 sub help_message() {
@@ -199,18 +203,18 @@ sub connect() {
 }
 
 # This subroutine forwards a directive to the specified host as a string.
-# If one wishes to send more than just one string, specify a file with 
+# If one wishes to send more than just one string, specify a file with
 # a list of commands (minus the 'direct [alias]'. This file will be parsed
-# and each line will be sent to the target computer. 
+# and each line will be sent to the target computer.
 # Args: [alias] [command|file]
 sub direct() {
     my ($alias) = shift;
-    if (!defined $clients{$alias}) { 
+    if (!defined $clients{$alias}) {
 	print "Specified host not found! Have you connected him yet?\n";
 	    return;
     }
 
-# If we have a file on our hands: parse it, prepending each line 
+# If we have a file on our hands: parse it, prepending each line
 # (save control structures) with the phrase 'direct [alias]'.
     if (-e $_[0]) {
 	my $sub_name = (caller(0))[3];
@@ -243,12 +247,12 @@ sub disconnect() {
 }
 
 # This subroutine begins the recursive parsing of the supplied file.
-# If it was invoked by direct (instead of run), the $address will 
+# If it was invoked by direct (instead of run), the $address will
 # be attached in order to send each command to the right host.
-# Args: [file to parse] [address] 
+# Args: [file to parse] [address]
 sub parsefile() {
     chomp(my ($file, $address) = @_);
-    unless (-e $file) { 
+    unless (-e $file) {
         print "error: file $file not found.\n";
         return;
     }
@@ -259,9 +263,9 @@ sub parsefile() {
 
 # This is a recursive subroutine.
 # This subroutine will read each line in a block of code (each loop is one block)
-# and execute the desired instructions. Each nested loop recurses once. 
+# and execute the desired instructions. Each nested loop recurses once.
 #
-# Should this be a file 'directed' to a host, the address must be supplied. 
+# Should this be a file 'directed' to a host, the address must be supplied.
 # See 'direct' and 'parsefile'. This will look like "direct $alias"
 #
 # Args: [times to repeat] [line to start parsing] [address] [file to parse] [blacklist]
@@ -275,20 +279,20 @@ sub run_block() {
 	while ($line < $#file-1) {
 
 # If a loop is starting, parse the number of times to repeat and jump in.
-	    if ($file[$line] =~ m/{/) { 
+	    if ($file[$line] =~ m/{/) {
 		(my $inner_rep = $file[$line]) =~ s/\D//g;
 		my %blacklist = ( sleep => 1, direct => 1 );
 		$line = &run_block($inner_rep, $line+1, $address, @file, %blacklist);
 	    }
-# If we have reached a closing brace, a loop is ending. Reset the 
+# If we have reached a closing brace, a loop is ending. Reset the
 # program counter and repeat from the beginning, or drop out and go up a level.
-	    elsif ($file[$line] =~ m/}/) { 
+	    elsif ($file[$line] =~ m/}/) {
 		$final = $line unless $final;
-		$line = $initial; 
+		$line = $initial;
 		last;
 	    }
 # If not a control statment, this must be a command. Run as such.
-	    else { 
+	    else {
 		my $command = $file[$line];
 		$command = $address.' '.$command unless defined $run_local{$command =~ s/[\s]+.*$//r};
 		&processCommand($command =~ s/^\s+//r); # chomp the beginning

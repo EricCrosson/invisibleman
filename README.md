@@ -35,7 +35,12 @@ particular, the remote hosts in mind were telephones running Linux,
 with SSH authentication certificates. Most of this document will
 provide examples regarding phones and the types of behaviors that a
 typical phone might encounter. Please note that the applications of
-this tool do not stop there.
+this tool do not stop there. This tool was originally designed to
+allow for a quick and painless interface for developers to test their
+code on telephones before checking anything in to the main repo for
+testing by QA. It is believed that easier unit testing would promote
+unit testing, and better testing would improve the quality of code
+included in each checkin.
 
 ## Dependencies
 
@@ -48,6 +53,11 @@ curl -L http://cpanmin.us | perl - --sudo Net::SSH2
 ```
 
 ## Connecting to Remote Hosts
+Now that we may run the shell without probolems, fire it up in most
+shells with `./shell.pl`. We are immediately presented with a
+prompt. Let's get started connecting to some remote hosts, as this
+section's title hinted.
+
 In order to connect as admin with a known set of keys, Henry would write
 
 ```lisp
@@ -129,6 +139,15 @@ connect 10.162.2.108 recipient ; say his ext. is 555
 direct marta dial555.auto
 direct recipient answer_incoming
 ```
+
+### Aliases
+
+In addition to subroutines, this scripting tool sticks to aliases
+almost as religiously as GDB. Every command save one may be shortened
+to its respective first letter. The one command without an alias is
+`disconnect`, which would overlap with the much mightier `direct`, and
+I take as no great loss because it shouldn't be called in a hurry
+anyway.
 
 ## Approaching a Programming Language
 
