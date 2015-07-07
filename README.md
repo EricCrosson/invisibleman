@@ -25,7 +25,7 @@ The Automation Scripting Tools is a command interpreter, written in
 Perl, that allows for the control of any number of hosts over ssh in a
 familiar programming environment. In order to connect to a host, you
 have to set a few configuration options. These can be hard coded into
-the script (see the %ssh hash) or chosen dynamically at runtime.
+the script (see the %ssh hash) or chosen dynamically at run-time.
 
 ## 'The Problem' This Program Solves
 
@@ -72,8 +72,8 @@ connect 10.162.2.108 henry
 connect 10.162.2.137 recipient
 ```
 
-For convenience, a host can be referenced by its alias. As of now, an
-alias may only be administered at the time of connection.
+For convenience, a host can be referenced by its alias. As of the latest
+release, an alias may only be administered at the time of connection.
 
 ## Issuing Commands to Hosts
 
@@ -109,18 +109,16 @@ and `answer_incoming` is a CLI command that waits until recognizing an
 incoming call, answers it, (perhaps delaying a small amount for audio
 cut-through and RTP establishment,) and returns.
 
-
 When the above snippet completes, the two phones will be engaged in a
 call.
 
-
 ## I Remember Something About Conciseness
 
-This syntax is rather bulky, and it's nice to save keystrokes and
-time. Instead of utilizing `C-x r t` cleverly, one can write a block
-of code as a subroutine. In a separate file, write a block of code you
-would like to direct to a host. Let's call this file `dial555.auto`,
-and make it behave identically to the above script:
+This syntax is rather bulky, and it's nice to save keystrokes and time. Instead
+of utilizing rectangular inserts cleverly, one can write a block of code as a
+subroutine. In a separate file, write a block of code you would like to direct
+to a host. Let's call this file `dial555.auto`, and make it behave identically
+to the above script:
 
 ```lisp
 push 35 ; number 5
@@ -128,8 +126,6 @@ push 35
 push 35
 push 17660 ; dial
 ```
-
-
 Now our main code has been shortened to:
 
 ```lisp
@@ -255,5 +251,5 @@ scripts. Evaluating the following line in Emacs will enable
 highlighting in all files ending in `.auto`
 
 ```lisp
-(load-library "invisible-mode")
+(load-library "resources/invisible-mode")
 ```
